@@ -1,0 +1,21 @@
+{
+  "name": "onyxium-docs",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "bun@1.3.12",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "0.42.4",
+    "astro": "7.3.5",
+    "sharp": "0.35.5"
+  },
+  "devDependencies": {
+    "wrangler": "4.142.0"
+  }
+}
