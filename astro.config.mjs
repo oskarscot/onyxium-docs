@@ -2,8 +2,8 @@ import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 
 export default defineConfig({
+  site: 'https://docs.onyxium.dev',
   output: 'static',
-  // TODO: Set `site` to the production URL after creating the Pages project.
   integrations: [
     starlight({
       title: 'Onyxium',
