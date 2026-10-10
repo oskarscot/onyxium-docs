@@ -1,0 +1,150 @@
+---
+title: Setting up
+description: Set up Onyxium and connect it to your first Hytale server.
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+This guide takes you through connecting Onyxium to one Hytale server. Once it’s working, players will join using the proxy’s address.
+
+## Before you start
+
+You’ll need Java 25, a Hytale account with a game profile, and a working Hytale server. You also need access to the server’s files and console. If you haven’t set up a server yet, follow the [official Hytale server manual](https://support.hytale.com/hc/en-us/articles/45326769420827-Hytale-Server-Manual) first.
+
+For the examples below, the proxy and Hytale server run on the same machine. The proxy uses port `5520`, and the server uses port `5521`. A port lets the machine tell the two services apart.
+
+## 1. Download Onyxium
+
+TODO: Download instructions for the proxy and backend plugin.
+
+For the rest of this guide, put the proxy JAR in its own folder and name it `onyxium-proxy.jar`. Keep this folder separate from your Hytale server folder. You’ll also need the backend plugin JAR for step 4.
+
+## 2. Start the proxy and sign in
+
+Open a terminal in your new proxy folder and run:
+
+```sh
+java -jar onyxium-proxy.jar
+```
+
+<Steps>
+
+1. **Open the login link shown in the console.**
+
+   Sign in to your Hytale account in your browser and complete the authorisation.
+
+2. **Choose a profile if prompted.**
+
+   If your account has several game profiles, enter the number of the one you want to use in the proxy console.
+
+3. **Wait for the proxy to start listening.**
+
+   Look for `Hytale authentication completed`, followed by `Listening on` in the console.
+
+4. **Stop the proxy while you finish setting it up.**
+
+   Enter this in the proxy console, without a leading slash:
+
+   ```text
+   onyxium stop
+   ```
+
+</Steps>
+
+The proxy creates `onyxium.yml`, which holds its settings, and `onyxium-auth.json`, which stores your login. Keep the login file private. On later starts, Onyxium uses the saved login where possible.
+
+<Aside type="note" title="Using a hosting panel">
+  Set the proxy’s startup command to `java -jar onyxium-proxy.jar` and make sure Java 25 is selected. You’ll need to see the console during the first login and be able to type into it if profile selection is required.
+</Aside>
+
+## 3. Point the proxy at your server
+
+Open `onyxium.yml` in a text editor. For a server running on the same machine, the generated settings already point to the right place:
+
+```yaml
+listener:
+  host: 0.0.0.0
+  port: 5520
+  password: ""
+
+backends:
+  lobby:
+    host: 127.0.0.1
+    port: 5521
+
+initial-servers:
+  - lobby
+```
+
+`listener` is where players connect. `backends` tells Onyxium where your Hytale server is, and `initial-servers` tells it which server to try when a player joins. `lobby` is just a name for this server; it doesn’t change the world or game mode.
+
+Leave the generated `forwarding.secret` further down the file in place. You’ll copy it to your server in the next step. The example above only shows part of the configuration, so don’t use it to replace the whole file.
+
+If your server runs on a different machine, replace `127.0.0.1` with its address and set `port` to its actual server port. `127.0.0.1` always means the machine running the proxy. With containers or a hosting panel, two services on the same physical machine may still need separate addresses.
+
+## 4. Install and link the backend plugin
+
+Stop your Hytale server before changing its files.
+
+Copy the backend JAR into the server’s `mods` folder. This is the folder Hytale uses for installed mods and plugins, as described in the [server manual](https://support.hytale.com/hc/en-us/articles/45326769420827-Hytale-Server-Manual).
+
+Make sure the server listens on port `5521` for this example. If you start it directly, add `--bind 127.0.0.1:5521` to your existing Hytale startup command. Keep your existing assets path and other options. With a hosting panel, use its server address and port settings instead.
+
+<Steps>
+
+1. **Start the Hytale server with the plugin installed.**
+
+   The plugin creates its own `config.json`. It will report `Invalid forwarding configuration` on this first start because you haven’t added the secret yet. That’s expected.
+
+2. **Find the plugin’s configuration file.**
+
+   The message in the server console includes its full location. Use that path to find the right file, rather than editing the server’s main `config.json`.
+
+3. **Stop the server and copy the secret.**
+
+   In the proxy’s `onyxium.yml`, copy the value of `forwarding.secret`. Paste it into the backend plugin’s `config.json` as `ForwardingSecret`:
+
+   ```json
+   {
+     "ForwardingSecret": "PASTE_YOUR_PROXY_SECRET_HERE"
+   }
+   ```
+
+   Replace the example text with the actual secret. Keep the double quotes around it.
+
+4. **Start the server again.**
+
+   Look for `Onyxium forwarding configured from` in its console. If it still reports an invalid configuration, check that the secret was copied in full and that the JSON is valid.
+
+</Steps>
+
+<Aside type="caution" title="Keep the secret private">
+  The secret links your proxy to your server. Don’t share it or include it in screenshots. Restrict access to the backend so only the proxy can reach it. For a server on a separate machine, your host can help you set up the firewall rules.
+</Aside>
+
+## 5. Join through the proxy
+
+With the Hytale server running, start Onyxium again:
+
+```sh
+java -jar onyxium-proxy.jar
+```
+
+In Hytale, connect to the proxy’s address and port. If you’re playing on the same machine, use `127.0.0.1:5520`. Other players should use the proxy machine’s public address with port `5520`.
+
+Allow incoming **UDP** traffic on the proxy’s port in your firewall or hosting panel. If you host at home, you may also need to forward that UDP port on your router. Hytale’s [server manual](https://support.hytale.com/hc/en-us/articles/45326769420827-Hytale-Server-Manual) explains these network settings.
+
+After you join, the proxy console should show `Connected` with your player details and the backend address. You can also enter `onyxium players` in the proxy console to check who is connected.
+
+## If something goes wrong
+
+| Problem | What to check |
+| --- | --- |
+| The proxy won’t start | Run `java -version` and check that it reports Java 25. Make sure you’re using the bundled proxy JAR, not the plain JAR. |
+| The address is already in use | Check that the proxy and Hytale server have different ports, and that another copy isn’t already running. |
+| The backend rejects the connection | Check the backend plugin is installed, its secret matches the proxy’s, and the server has been restarted after editing it. |
+| The backend connection times out | Check the backend address and port in `onyxium.yml`, that the server is running, and that the proxy can reach it over UDP. |
+| Hytale reports an incompatible protocol | Check that your client, proxy build, and backend server use compatible Hytale versions. |
+| You can join locally but friends can’t | Check the proxy’s public address, UDP firewall rules, and router port forwarding. |
+
+Restart Onyxium after changing `onyxium.yml` so it picks up the new settings.

@@ -1,0 +1,49 @@
+---
+title: Overview
+description: An introduction to Onyxium, a proxy for Hytale server networks.
+---
+
+import { Aside, Card, CardGrid } from '@astrojs/starlight/components';
+
+<Aside type="note" title="Still in development">
+  Onyxium is still in early development. Things may break or change at short notice, and everything is subject to change.
+</Aside>
+
+Onyxium is a proxy for Hytale. It sits between your players and your servers, giving them one address to join your network.
+
+Your Hytale servers still run the worlds and handle gameplay. Onyxium handles player logins and connects each player to a server, so you can manage how people enter your network in one place.
+
+## What it does
+
+<CardGrid>
+  <Card title="One address for your network">
+    Players join through Onyxium instead of connecting to each server directly. You choose which servers it should try when someone joins.
+  </Card>
+  <Card title="Player authentication">
+    Onyxium checks each player’s identity with Hytale before letting them through. You can also add a password to your network.
+  </Card>
+  <Card title="Player identity">
+    Your servers receive the player’s verified identity, so they know who has joined through the proxy.
+  </Card>
+  <Card title="Plugins">
+    Customise how the proxy behaves, add your own commands, and react to events with a simple, powerful API.
+  </Card>
+</CardGrid>
+
+## Who it’s for
+
+Onyxium is for server owners who want a shared entry point for their Hytale servers, and developers who want to customise what happens when players join. You can use it with a single server or configure several servers for it to try at login.
+
+## What you need
+
+To run Onyxium, you’ll need:
+
+- **At least one Hytale server.** Onyxium connects players to your servers, so you need a Hytale server set up first.
+- **A computer or hosting service to run it on.** You can run Onyxium on the same machine as your Hytale server or on a separate one. If you use a hosting provider, check that it allows you to run a proxy alongside your server.
+- **Java 25.** Java is the software that runs Onyxium. It needs to be installed on the machine running the proxy.
+- **A Hytale account with a game profile.** You’ll sign in through your browser when you first start Onyxium.
+- **The Onyxium backend plugin on each server.** This lets your Hytale servers accept players through the proxy. The setup guide will cover installing it and linking it to Onyxium.
+- **A working internet connection.** Players need to be able to reach the proxy, and the proxy needs to reach your servers and Hytale’s login services.
+
+Your Hytale client, servers, and Onyxium build also need to be compatible. Updating one may mean you need to update the others.
+

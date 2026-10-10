@@ -7,7 +7,13 @@ export default defineConfig({
   integrations: [
     starlight({
       title: 'Onyxium',
-      sidebar: [{ label: 'Overview', slug: '' }],
+      components: {
+        Footer: './src/components/Footer.astro',
+      },
+      sidebar: [
+        { label: 'Overview', slug: '' },
+        { label: 'Setting up', slug: 'setting-up' },
+      ],
     }),
   ],
 });

@@ -1,0 +1,62 @@
+---
+import EditLink from '@astrojs/starlight/components/EditLink.astro';
+import LastUpdated from '@astrojs/starlight/components/LastUpdated.astro';
+import Pagination from '@astrojs/starlight/components/Pagination.astro';
+---
+
+<footer>
+  <div class="meta">
+    <EditLink />
+    <LastUpdated />
+  </div>
+  <Pagination />
+  <div class="notice">
+    <p class="made-in">Made with love in Scotland ❤️</p>
+    <p class="community-notice">
+      Onyxium is a separate, community-made project. It is not affiliated with or endorsed by
+      Hypixel Studios Canada Inc.
+    </p>
+  </div>
+</footer>
+
+<style>
+  footer {
+    margin-top: 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.75rem 3rem;
+    font-size: var(--sl-text-sm);
+    color: var(--sl-color-gray-3);
+  }
+
+  .meta:empty {
+    display: none;
+  }
+
+  .notice {
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--sl-color-hairline);
+  }
+
+  .made-in {
+    margin: 0;
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-sm);
+    text-align: center;
+  }
+
+  .community-notice {
+    margin: 0.75rem 0 0;
+    color: var(--sl-color-gray-3);
+    font-size: var(--sl-text-sm);
+    line-height: 1.6;
+    text-align: center;
+  }
+</style>
