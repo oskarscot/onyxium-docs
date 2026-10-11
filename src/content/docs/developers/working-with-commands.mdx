@@ -1,0 +1,233 @@
+---
+title: Working with Commands
+description: Add commands to your Onyxium plugin with arguments, permissions, aliases and custom types.
+---
+
+import { Aside } from '@astrojs/starlight/components';
+
+Commands let players and the console interact with your plugin. You write a Java method, mark it with `@Command`, and register the object that contains it. Onyxium reads the input, checks permissions and passes the arguments to your method.
+
+This guide assumes you already have a plugin that extends `dev.onyxium.proxy.api.plugin.Plugin` and depends on the Onyxium API. The command classes are in `dev.onyxium.command`.
+
+## Before you start
+
+Compile your plugin with Java 25 and the `-parameters` compiler option. Onyxium uses your method parameter names for placeholders and usage messages. In your plugin’s `build.gradle.kts`, add:
+
+```kotlin
+tasks.withType<JavaCompile>().configureEach {
+    options.compilerArgs.add("-parameters")
+}
+```
+
+## Create a command handler
+
+Create a public class for your commands. This one replies to `/hello`:
+
+```java title="HelloCommands.java"
+import dev.onyxium.command.Command;
+import dev.onyxium.command.CommandSource;
+
+public final class HelloCommands {
+
+    @Command(name = "hello", description = "Say hello.")
+    public void hello(CommandSource source) {
+        source.sendMessage("Hello from Onyxium!");
+    }
+}
+```
+
+The first parameter is the caller. `CommandSource` accepts both players and the console, and `sendMessage()` replies to whichever one ran the command.
+
+Handler methods must be public, non-static and return `void`. Onyxium only registers methods declared on the handler class, so inherited command methods are ignored.
+
+## Register it in your plugin
+
+Register your handler in your plugin’s `enable()` method:
+
+```java
+@Override
+public void enable() {
+    proxyServer().commandDispatcher()
+            .registerHandler(this, new HelloCommands());
+}
+```
+
+Pass `this` as the owner so Onyxium can remove your commands and aliases when the plugin is disabled. You don’t need to unregister them in `disable()`. Cleanup also runs if the plugin fails to load or enable, or if its `disable()` method throws. Registering in `enable()` makes the commands available again when the plugin is re-enabled.
+
+After the plugin starts, enter `/hello` in game or `hello` in the proxy console. Both should reply with `Hello from Onyxium!`.
+
+Handlers run on the thread that received the command, so avoid blocking work such as database queries in the handler itself.
+
+The remaining handler examples can go inside your public command class.
+
+## Accept arguments
+
+Add parameters after the source. Without placeholders in the name, Onyxium reads them after the command’s words, in method parameter order:
+
+```java
+@Command(name = "greet")
+public void greet(CommandSource source, String name) {
+    source.sendMessage("Hello, " + name + "!");
+}
+```
+
+`/greet Alex` passes `Alex` as `name`. Use quotes for a single argument containing spaces: `/greet "Alex Smith"` passes `Alex Smith` without the quotes.
+
+These types work without a custom converter:
+
+| Parameter type | Accepted input |
+| --- | --- |
+| `String` | A word or quoted text |
+| `byte`, `short`, `int`, `long` | A whole number within the type’s range |
+| `float`, `double` | A finite decimal number |
+| `boolean` | `true` or `false`, ignoring case |
+| `char` | A single Java character |
+| `java.util.UUID` | A UUID string |
+| An enum | One of its constant names, ignoring case |
+
+The boxed versions, such as `Integer` and `Boolean`, work too. Onyxium also registers a converter for `dev.onyxium.proxy.api.player.Player`, which looks up a connected player by username.
+
+### Choose where an argument goes
+
+Use a placeholder when an argument belongs between command words. Its name must match the Java parameter exactly:
+
+```java
+@Command(name = "example {value} show")
+public void show(CommandSource source, Integer value) {
+    source.sendMessage("You entered " + value + ".");
+}
+```
+
+Run this with `/example 42 show`. The fixed words are `example` and `show`; `{value}` tells Onyxium where to read the integer.
+
+Both styles are supported, but they expect different input. For a handler with one integer parameter named `value`:
+
+| Command name | Example input |
+| --- | --- |
+| `example show` | `/example show 42` |
+| `example {value} show` | `/example 42 show` |
+
+You can put placeholders in a different order from the method parameters. Onyxium matches them by name. Parameters without a placeholder are added at the end in method order; parameters already named in the path are not added again.
+
+### Make an argument optional
+
+Use `java.util.Optional<T>` when the caller can leave an argument out:
+
+```java
+@Command(name = "welcome")
+public void welcome(CommandSource source, Optional<String> name) {
+    source.sendMessage("Welcome, " + name.orElse("everyone") + "!");
+}
+```
+
+`/welcome` passes `Optional.empty()`. `/welcome Alex` passes an optional containing `Alex`. Optional arguments must come after all required arguments and fixed words in the command path.
+
+### Read the rest of the input
+
+Import `dev.onyxium.command.Greedy` and use `@Greedy` for messages that can contain several words:
+
+```java
+@Command(name = "echo")
+public void echo(CommandSource source, @Greedy String message) {
+    source.sendMessage(message);
+}
+```
+
+`/echo Hello everyone` passes `Hello everyone` as one string. A greedy argument keeps quotes, escapes and spacing as written, apart from leading whitespace. There’s no need to put the message in quotes.
+
+A greedy argument must be a `String` or `Optional<String>` and must be last in the command path. Use `@Greedy Optional<String>` if the text can be omitted too.
+
+## Add permissions and aliases
+
+Set `permission` to require a permission before Onyxium invokes the handler. This example also gives `status` an alias:
+
+```java
+@Command(
+    name = "network status",
+    permission = "myplugin.status",
+    aliases = { "health" },
+    description = "Show the network status."
+)
+public void status(CommandSource source) {
+    source.sendMessage("The proxy is running.");
+}
+```
+
+Both `/network status` and `/network health` call this method. Aliases replace the last fixed word, so this does not create a standalone `/health` command. An alias also works for subcommands beneath the word it replaces.
+
+Leave `permission` empty to allow the command without a permission check. Players need an active permission provider to grant permission nodes; the proxy console passes permission checks. A command’s `description` is available to plugins that build help listings.
+
+## Restrict who can run a command
+
+Choose the first parameter’s type to control who can call the handler:
+
+| Source type | Who can run it |
+| --- | --- |
+| `dev.onyxium.command.CommandSource` | Players and the proxy console |
+| `dev.onyxium.proxy.api.player.Player` | Players only |
+| `dev.onyxium.proxy.api.command.ConsoleSource` | The proxy console only |
+
+For example, import `dev.onyxium.proxy.api.player.Player` to make this command available only to players:
+
+```java
+@Command(name = "whoami")
+public void whoami(Player player) {
+    player.sendMessage("You are " + player.username() + ".");
+}
+```
+
+Here, `player` is the caller, so `/whoami` takes no arguments. A `Player` parameter after the source instead looks up another player by username. Source restrictions and permission checks both apply when you use them together.
+
+## Convert your own argument types
+
+Register a converter when you want a handler to receive your own type. For example, this record represents a port:
+
+```java title="Port.java"
+public record Port(int value) {
+}
+```
+
+Register its converter once in your plugin’s `load()` method, before registering the handlers in `enable()`:
+
+```java
+@Override
+public void load() {
+    proxyServer().commandDispatcher().argumentParser()
+            .register(Port.class, input -> {
+                var value = Integer.parseInt(input);
+
+                if (value < 1 || value > 65535) {
+                    throw new IllegalArgumentException("Port is out of range.");
+                }
+
+                return new Port(value);
+            });
+}
+```
+
+Your handler can then accept a `Port` directly:
+
+```java
+@Command(name = "port")
+public void port(CommandSource source, Port port) {
+    source.sendMessage("Port: " + port.value());
+}
+```
+
+`/port 5520` passes a `Port` containing `5520`. Invalid input produces an argument error and usage message. Converters must return a non-null value of the registered type, or throw `IllegalArgumentException` for invalid input.
+
+Converters belong to the shared dispatcher and cannot be replaced or unregistered. Register them in `load()`, which runs once, so re-enabling your plugin does not try to register them again.
+
+## How commands are matched
+
+Command words and aliases ignore case. Placeholder names must match the Java parameter names, and each parameter can appear in the path only once. Command words use letters `a` to `z`, digits, underscores or hyphens, and must start with a letter or digit.
+
+If a fixed word and an argument could both match, the fixed word wins. Once Onyxium chooses that branch, it does not retry the argument branch if the rest of the input is invalid.
+
+<Aside type="note" title="Shared argument paths">
+  Commands such as `team {name} info` and `team {name} leave` share an argument after `team`. Both must use the same type and optional/greedy settings there. The Java parameter names can differ. Conflicting declarations fail during registration.
+</Aside>
+
+If any command on a handler is invalid or conflicts with a registered command, none of that handler’s commands are added. Missing or invalid arguments produce a usage message instead of calling the method. Usage text shows required arguments as `<name>`, optional ones as `[name]` and greedy ones with `...`.
+
+For player input, Onyxium forwards commands to the backend only when the first word is unknown to the proxy. If your plugin registers `network`, input starting with `/network` stays with the proxy, even when the rest is invalid or the player lacks permission. Choose a root name that won’t clash with commands you want the backend to handle.

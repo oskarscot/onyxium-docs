@@ -13,6 +13,12 @@ export default defineConfig({
       sidebar: [
         { label: 'Overview', slug: '' },
         { label: 'Setting up', slug: 'setting-up' },
+        {
+          label: 'Developers',
+          items: [
+            { label: 'Working with Commands', slug: 'developers/working-with-commands' },
+          ],
+        },
       ],
     }),
   ],
